@@ -10,8 +10,9 @@ class SizeStep<T extends SplitPointUnit> implements StepForward<T> {
 	private final Set<String> ids;
 	private final float breakPoint;
 	private final boolean useLastUnitSize;
-	private T lastUnit;
+	private T lastUnit = null;
 	private boolean hasSupplements;
+	private int count = 0;
 	
 	SizeStep(float breakPoint, Supplements<T> map, boolean useLastUnitSize) {
 		this.breakPoint = breakPoint;
@@ -23,6 +24,7 @@ class SizeStep<T extends SplitPointUnit> implements StepForward<T> {
 
 	@Override
 	public void addUnit(T unit) {
+		count++;
 		if (lastUnit!=null) {
 			size+=lastUnit.getUnitSize();
 			lastUnit = null;
@@ -78,7 +80,15 @@ class SizeStep<T extends SplitPointUnit> implements StepForward<T> {
 
 	@Override
 	public void addDiscarded(T unit) {
+		count++;
 		//Nothing to do
 	}
 
+	public int getTotalCount() {
+		return count;
+	}
+	
+	public T getLastUnit() {
+		return lastUnit;
+	}
 }

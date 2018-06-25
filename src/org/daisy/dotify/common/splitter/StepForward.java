@@ -26,4 +26,12 @@ interface StepForward<T extends SplitPointUnit> {
 	 * @param unit the unit that is discarded
 	 */
 	void addDiscarded(T unit);
+	
+	default boolean hasNext(SplitPointDataSource.Iterator<T> data) {
+		return data.hasNext();
+	}
+	
+	default T getNext(SplitPointDataSource.Iterator<T> data) {
+		return data.next(false);
+	}
 }
