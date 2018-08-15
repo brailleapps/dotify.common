@@ -33,6 +33,19 @@ public interface SplitPointDataSource<T extends SplitPointUnit> {
 		 */
 		public boolean hasNext();
 
+		/*
+		 * Gets the next item, given a target position. The SplitPointDataSource
+		 * may refuse to return an item if it can't be fit in a dimension not
+		 * controlled by the caller, in which case it should throw a
+		 * CantFitInOtherDimensionException. The SplitPointDataSource must not
+		 * interfere with the breaking in the "first dimension", i.e. the
+		 * dimension represented by the provided "position" argument.
+		 *
+		 * @param position the target position
+		 * @throws CantFitInOtherDimensionException if a next item can not be
+		 *         produced in a way that it fits the other dimensions
+		 */
+
 		// FIXME: do we need to cover the case of two subsequent breaks? (empty page)
 		// FIXME: make break explicit with a dedicated method?
 		// FIXME: add a "context" argument? (may contain CrossReferenceHandler but also things like hyphenateLastLine)
@@ -43,7 +56,7 @@ public interface SplitPointDataSource<T extends SplitPointUnit> {
 		 * @return returns the next item
 		 * @throws NoSuchElementException if there are no items left
 		 */
-		public T next(boolean last) throws NoSuchElementException;
+		public T next(float position, boolean last) throws NoSuchElementException, CantFitInOtherDimensionException;
 
 		// needs to be called at most once in a row (similar to peek)
 		// FIXME: isn't it more efficient to handle this on caller side?

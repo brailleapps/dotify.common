@@ -1,5 +1,7 @@
 package org.daisy.dotify.common.splitter;
 
+import java.util.NoSuchElementException;
+
 /**
  * Provides a package interface for iterating over a list of units
  * @author Joel Håkansson
@@ -31,7 +33,8 @@ interface StepForward<T extends SplitPointUnit> {
 		return data.hasNext();
 	}
 	
-	default T getNext(SplitPointDataSource.Iterator<T> data) {
-		return data.next(false);
+	default T getNext(SplitPointDataSource.Iterator<T> data, float position)
+			throws NoSuchElementException, CantFitInOtherDimensionException {
+		return data.next(position, false);
 	}
 }

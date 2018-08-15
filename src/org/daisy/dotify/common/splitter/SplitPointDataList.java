@@ -129,8 +129,9 @@ public final class SplitPointDataList<T extends SplitPointUnit> implements Split
 			return units.size() > offset + index;
 		}
 
+		// position is ignored
 		@Override
-		public T next(boolean last) throws NoSuchElementException {
+		public T next(float position, boolean last) throws NoSuchElementException, CantFitInOtherDimensionException {
 			if (hasNext()) {
 				return units.get(offset + index++);
 			} else {
