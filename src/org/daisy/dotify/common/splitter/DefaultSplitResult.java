@@ -8,16 +8,16 @@ import java.util.List;
  *
  * @param <T> the type of units
  */
-public class DefaultSplitResult<T extends SplitPointUnit> implements SplitResult<T> {
+public class DefaultSplitResult<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> implements SplitResult<T,U> {
 	private final List<T> head;
-	private final SplitPointDataSource<T> tail;
+	private final SplitPointDataSource<T,U> tail;
 	
 	/**
 	 * Creates a new result.
 	 * @param head the head of the result
 	 * @param tail the tail of the result
 	 */
-	public DefaultSplitResult(List<T> head, SplitPointDataSource<T> tail) {
+	public DefaultSplitResult(List<T> head, SplitPointDataSource<T,U> tail) {
 		this.head = head;
 		this.tail = tail;
 	}
@@ -28,7 +28,7 @@ public class DefaultSplitResult<T extends SplitPointUnit> implements SplitResult
 	}
 
 	@Override
-	public SplitPointDataSource<T> tail() {
+	public SplitPointDataSource<T,U> tail() {
 		return tail;
 	}
 }

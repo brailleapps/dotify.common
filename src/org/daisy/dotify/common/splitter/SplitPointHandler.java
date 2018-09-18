@@ -18,7 +18,7 @@ import org.daisy.dotify.common.splitter.SplitPointSpecification.Type;
  *
  * @param <T> the type of split point units
  */
-public class SplitPointHandler<T extends SplitPointUnit> {
+public class SplitPointHandler<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> {
 	private final List<T> EMPTY_LIST = Collections.emptyList();
 	private final SplitPointCost<T> defaultCost = new SplitPointCost<T>() {
 		@Override
@@ -39,8 +39,8 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @return returns a split point result
 	 */
 	@SafeVarargs
-	public static <T extends SplitPointUnit> SplitPoint<T> split(float breakPoint, float position, T ... units) {
-		SplitPointHandler<T> splitter = new SplitPointHandler<>();
+	public static <T extends SplitPointUnit> SplitPoint<T,SplitPointDataList<T>> split(float breakPoint, float position, T ... units) {
+		SplitPointHandler<T,SplitPointDataList<T>> splitter = new SplitPointHandler<>();
 		return splitter.split(breakPoint, position, new SplitPointDataList<T>(units), splitter.defaultCost);
 	}
 
@@ -54,8 +54,8 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param <T> the type of split point units
 	 * @return returns a split point result
 	 */
-	public static <T extends SplitPointUnit> SplitPoint<T> split(float breakPoint, float position, List<T> units, SplitOption ... options) {
-		SplitPointHandler<T> splitter = new SplitPointHandler<>();
+	public static <T extends SplitPointUnit> SplitPoint<T,SplitPointDataList<T>> split(float breakPoint, float position, List<T> units, SplitOption ... options) {
+		SplitPointHandler<T,SplitPointDataList<T>> splitter = new SplitPointHandler<>();
 		return splitter.split(breakPoint, position, new SplitPointDataList<T>(units), splitter.defaultCost, options);
 	}
 	
@@ -71,8 +71,8 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param <T> the type of split point units
 	 * @return returns a split point result
 	 */
-	public static <T extends SplitPointUnit> SplitPoint<T> split(float breakPoint, float position, List<T> units, SplitPointCost<T> cost, SplitOption ... options) {
-		SplitPointHandler<T> splitter = new SplitPointHandler<>();
+	public static <T extends SplitPointUnit> SplitPoint<T,SplitPointDataList<T>> split(float breakPoint, float position, List<T> units, SplitPointCost<T> cost, SplitOption ... options) {
+		SplitPointHandler<T,SplitPointDataList<T>> splitter = new SplitPointHandler<>();
 		return splitter.split(breakPoint, position, new SplitPointDataList<T>(units), cost, options);
 	}
 
@@ -80,24 +80,19 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * Splits the data at, or before, the supplied breakPoint according to the rules
 	 * in the data. If force is used, rules may be broken to achieve a result.
 	 *
-	 * The resulting tail is guaranteed to be of the same type as the input data.
-	 *
 	 * @param breakPoint the split point
 	 * @param position the current position
 	 * @param data the data to split
 	 * @param options the split options
 	 * @return returns a split point result
 	 */
-	public SplitPoint<T> split(float breakPoint, float position, SplitPointDataSource<T> data, SplitOption ... options) {
+	public SplitPoint<T,U> split(float breakPoint, float position, U data, SplitOption ... options) {
 		return split(breakPoint, position, data, defaultCost, options);
 	}
 
 	/**
 	 * Splits the data at, or before, the supplied breakPoint according to the rules
 	 * in the data. If force is used, rules may be broken to achieve a result.
-	 *
-	 * The resulting tail is guaranteed to be of the same type as the input data, and the
-	 * cost function is guaranteed to be called with objects of that type.
 	 *
 	 * @param breakPoint the split point
 	 * @param position the current position
@@ -108,7 +103,7 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @return returns a split point result
 	 * @throws IllegalArgumentException if cost is null
 	 */
-	public SplitPoint<T> split(float breakPoint, float position, SplitPointDataSource<T> data, SplitPointCost<T> cost, SplitOption ... options) {
+	public SplitPoint<T,U> split(float breakPoint, float position, U data, SplitPointCost<T> cost, SplitOption ... options) {
 		SplitPointSpecification spec = find(breakPoint, position, data, cost, options);
 		if (cost==null) {
 			throw new IllegalArgumentException("Null cost not allowed.");
@@ -123,19 +118,17 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * {@link #find(float, float, SplitPointDataSource, SplitPointCost, SplitOption...)} on the data source.</p>
 	 * <p>No data is beyond the specified split point is produced using this method.</p>
 	 *
-	 * The resulting tail is guaranteed to be of the same type as the input data.
-	 *
 	 * @param spec the specification
 	 * @param position the current position
 	 * @param data the data
 	 * @return returns a split point result
 	 */
-	public SplitPoint<T> split(SplitPointSpecification spec, float position, SplitPointDataSource<T> data) {
+	public SplitPoint<T,U> split(SplitPointSpecification spec, float position, U data) {
 		if (spec.getType()==Type.EMPTY || spec.getType()==Type.NONE) {
-			return new SplitPoint<>(EMPTY_LIST, EMPTY_LIST, data, EMPTY_LIST, false);
+			return new SplitPoint<T,U>(EMPTY_LIST, EMPTY_LIST, data, EMPTY_LIST, false);
 		} else if (spec.getType()==Type.ALL) {
-			TrimStep<T> trimmed = new TrimStep<>(data.getSupplements());
-			SplitPointDataSource<T> tail = findCollapse(data, position, trimmed);
+			TrimStep<T,U> trimmed = new TrimStep<>(data.getSupplements());
+			U tail = findCollapse(data, position, trimmed);
 			List<T> head = trimmed.getResult();
 			List<T> discarded = trimmed.getDiscarded();
 			if (spec.shouldTrimTrailing()) {
@@ -143,20 +136,20 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 				head = split.getFirstPart();
 				discarded.addAll(split.getSecondPart());
 			}
-			return new SplitPoint<>(head, trimmed.getSupplements(), tail, discarded, false);
+			return new SplitPoint<T,U>(head, trimmed.getSupplements(), tail, discarded, false);
 		} else if (spec.getType()==Type.INDEX) {
-			TrimStep<T> trimmed = new TrimStep<T>(data.getSupplements()) {
+			TrimStep<T,U> trimmed = new TrimStep<T,U>(data.getSupplements()) {
 					int count = 0;
 					@Override
-					public boolean hasNext(SplitPointDataSource.Iterator<T> data) {
+					public boolean hasNext(SplitPointDataSource.Iterator<T,U> data) {
 						return count + 1 <= spec.getIndex();
 					}
 					@Override
-					public T getNext(SplitPointDataSource.Iterator<T> data, float position) {
+					public T getNext(SplitPointDataSource.Iterator<T,U> data, float position) {
 						return data.next(position, ++count == spec.getIndex());
 					}
 				};
-			SplitPointDataSource<T> tail = findCollapse(data, position, trimmed);
+			U tail = findCollapse(data, position, trimmed);
 			List<T> head = trimmed.getResult();
 			List<T> discarded = trimmed.getDiscarded();
 			if (spec.shouldTrimTrailing()) {
@@ -180,16 +173,13 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param options the split options
 	 * @return returns a split point specification
 	 */
-	public SplitPointSpecification find(float breakPoint, float position, SplitPointDataSource<T> data, SplitOption ... options) {
+	public SplitPointSpecification find(float breakPoint, float position, U data, SplitOption ... options) {
 		return find(breakPoint, position, data, defaultCost, options);
 	}
 
 	/**
 	 * Finds a split point at, or before, the supplied breakPoint according to the rules
 	 * in the data. If force is used, rules may be broken to achieve a result.
-	 *
-	 * The cost function is guaranteed to be called with objects of the same type as the
-	 * input data.
 	 *
 	 * @param breakPoint the split point
 	 * @param data the data to split
@@ -198,7 +188,7 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param options the split options
 	 * @return returns a split point specification
 	 */
-	public SplitPointSpecification find(float breakPoint, float position, SplitPointDataSource<T> data, SplitPointCost<T> cost, SplitOption ... options) {
+	public SplitPointSpecification find(float breakPoint, float position, U data, SplitPointCost<T> cost, SplitOption ... options) {
 		SplitOptions opts = SplitOptions.parse(options);
 		if (cost==null) {
 			throw new IllegalArgumentException("Null cost not allowed.");
@@ -212,8 +202,8 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 			return SplitPointSpecification.all();
 		} else {
 			final int limit; {
-				SizeStep<T> collect = new SizeStep<>(breakPoint-position, data.getSupplements(), opts.useLastUnitSize);
-				SplitPointDataSource<T> tail = findCollapse(data, position, collect);
+				SizeStep<T,U> collect = new SizeStep<>(breakPoint-position, data.getSupplements(), opts.useLastUnitSize);
+				U tail = findCollapse(data, position, collect);
 				// If no units are returned here it's because even the first unit doesn't fit.
 				// Therefore, force will not help.
 				if (collect.getTotalCount() == 0) {
@@ -229,7 +219,7 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 			final BreakPointScannerResult result = new BreakPointScannerResult();
 			result.bestBreakable = -1;
 			result.bestSplitPoint = limit;
-			findCollapse(data, position, new StepForward<T>() {
+			findCollapse(data, position, new StepForward<T,U>() {
 				double currentCost = Double.MAX_VALUE;
 				double currentBreakableCost = Double.MAX_VALUE;
 				int index = 0;
@@ -324,7 +314,7 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @return a split point, the leading skippable units are placed in {@link SplitPoint#getDiscarded()}, the
 	 * remainder are placed in {@link SplitPoint#getTail()}
 	 */
-	public static <T extends SplitPointUnit> SplitPoint<T> trimLeading(SplitPointDataSource<T> in) {
+	public static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> SplitPoint<T,U> trimLeading(U in) {
 		// ignoring position because we are looking for skippable (= blank) units, which should be
 		// the same regardless of position
 		float position = 0;
@@ -340,10 +330,10 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @return a split point, the leading units are placed in {@link SplitPoint#getDiscarded()}, the
 	 * remainder are placed in {@link SplitPoint#getTail()}
 	 */
-	public static <T extends SplitPointUnit> SplitPoint<T> skipLeading(SplitPointDataSource<T> in, int index, float position)
+	public static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> SplitPoint<T,U> skipLeading(U in, int index, float position)
 			throws NoSuchElementException, CantFitInOtherDimensionException {
 		List<T> skipped = new ArrayList<>();
-		SplitPointDataSource.Iterator<T> it = in.iterator();
+		SplitPointDataSource.Iterator<T,U> it = in.iterator();
 		while (skipped.size() < index) {
 			skipped.add(it.next(position, false));
 		}
@@ -356,12 +346,12 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param <T> the type of object
 	 * @return returns the index of the first non-skippable unit
 	 */
-	public static <T extends SplitPointUnit> int findLeading(SplitPointDataSource<T> in) {
+	public static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> int findLeading(U in) {
 		// ignoring position because we are looking for skippable (= blank) units, which should be
 		// the same regardless of position
 		float position = 0;
 		int i = 0;
-		for (SplitPointDataSource.Iterator<T> it = in.iterator(); it.hasNext();) {
+		for (SplitPointDataSource.Iterator<T,U> it = in.iterator(); it.hasNext();) {
 			T unit;
 			try {
 				unit = it.next(position, false);
@@ -393,18 +383,17 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	/**
 	 * Finds the last unit that fits into the given space
 	 *
-	 * Returns a data source containing the units that do not fit in the space. It is
-	 * guaranteed to be of the same type as the input data.
+	 * Returns a data source containing the units that do not fit in the space.
 	 *
 	 * @param data the input data source
 	 * @param collect destination of the units that fit into the given space
 	 * @return returns the index for the last unit
 	 */
-	static <T extends SplitPointUnit> SplitPointDataSource<T> findCollapse(SplitPointDataSource<T> data,
-	                                                                       float position,
-	                                                                       StepForward<T> collect) {
+	static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> U findCollapse(U data,
+	                                                                                     float position,
+	                                                                                     StepForward<T,U> collect) {
 		T maxCollapsable = null;
-		for (SplitPointDataSource.Iterator<T> it = data.iterator(); collect.hasNext(it);) {
+		for (SplitPointDataSource.Iterator<T,U> it = data.iterator(); collect.hasNext(it);) {
 			T c;
 			try {
 				c = collect.getNext(it, position);
@@ -456,10 +445,10 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 		return data; // empty
 	}
 
-	static <T extends SplitPointUnit> int forwardSkippable(T prevUnit, SplitPointDataSource<T> data) {
+	static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> int forwardSkippable(T prevUnit, U data) {
 		if (prevUnit != null && !prevUnit.isBreakable()) {
 			int skipped = 0;
-			for (SplitPointDataSource.Iterator<T> it = data.iterator(); it.hasNext();) {
+			for (SplitPointDataSource.Iterator<T,U> it = data.iterator(); it.hasNext();) {
 				T c;
 				try {
 					c = it.next(0, false);
@@ -494,7 +483,7 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param position the current position
 	 * @return returns the size 
 	 */
-	static <T extends SplitPointUnit> boolean fits(SplitPointDataSource<T> data, float limit, float position, boolean useLastUnitSize) {
+	static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> boolean fits(U data, float limit, float position, boolean useLastUnitSize) {
 		try {
 			return position + totalSize(data, limit, position, useLastUnitSize) <= limit;
 		} catch (CantFitInOtherDimensionException e) {
@@ -510,14 +499,14 @@ public class SplitPointHandler<T extends SplitPointUnit> {
 	 * @param position the current position
 	 * @return returns the size 
 	 */
-	static <T extends SplitPointUnit> float totalSize(SplitPointDataSource<T> data, float limit, float position, boolean useLastUnitSize)
+	static <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> float totalSize(U data, float limit, float position, boolean useLastUnitSize)
 			throws CantFitInOtherDimensionException {
 		float startPosition = position;
 		Set<String> ids = new HashSet<>();
 		Supplements<T> map = data.getSupplements();
 		boolean hasSupplements = false;
 		// we check up to the limit and beyond by one element, to make sure that we check enough units
-		for (SplitPointDataSource.Iterator<T> it = data.iterator(); it.hasNext() && position <= limit;) {
+		for (SplitPointDataSource.Iterator<T,U> it = data.iterator(); it.hasNext() && position <= limit;) {
 			T unit = it.next(position, false);
 			List<String> suppIds = unit.getSupplementaryIDs();
 			if (suppIds!=null) {

@@ -8,7 +8,7 @@ import java.util.NoSuchElementException;
  *
  * @param <T>
  */
-interface StepForward<T extends SplitPointUnit> {
+interface StepForward<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> {
 	/**
 	 * Performed when a unit should be included.
 	 * 
@@ -29,11 +29,11 @@ interface StepForward<T extends SplitPointUnit> {
 	 */
 	void addDiscarded(T unit);
 	
-	default boolean hasNext(SplitPointDataSource.Iterator<T> data) {
+	default boolean hasNext(SplitPointDataSource.Iterator<T,U> data) {
 		return data.hasNext();
 	}
 	
-	default T getNext(SplitPointDataSource.Iterator<T> data, float position)
+	default T getNext(SplitPointDataSource.Iterator<T,U> data, float position)
 			throws NoSuchElementException, CantFitInOtherDimensionException {
 		return data.next(position, false);
 	}

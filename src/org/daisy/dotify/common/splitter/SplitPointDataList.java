@@ -11,7 +11,7 @@ import java.util.NoSuchElementException;
  *
  * @param <T> the type of split point units
  */
-public final class SplitPointDataList<T extends SplitPointUnit> implements SplitPointDataSource<T> {
+public final class SplitPointDataList<T extends SplitPointUnit> implements SplitPointDataSource<T,SplitPointDataList<T>> {
 
 	@SuppressWarnings("rawtypes")
 	public static final SplitPointDataList EMPTY_LIST = new SplitPointDataList<>();
@@ -120,7 +120,7 @@ public final class SplitPointDataList<T extends SplitPointUnit> implements Split
 		return new SplitPointDataList<T>(units, supplements, offset + fromIndex);
 	}
 
-	public class ListIterator implements SplitPointDataSource.Iterator<T>, Cloneable {
+	public class ListIterator implements SplitPointDataSource.Iterator<T,SplitPointDataList<T>>, Cloneable {
 
 		private int index = 0;
 
@@ -148,7 +148,7 @@ public final class SplitPointDataList<T extends SplitPointUnit> implements Split
 		}
 
 		@Override
-		public SplitPointDataSource<T> iterable() {
+		public SplitPointDataList<T> iterable() {
 			if (index == 0) {
 				return SplitPointDataList.this;
 			} else {

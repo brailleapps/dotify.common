@@ -8,7 +8,7 @@ import java.util.List;
  *
  * @param <T> the type of units
  */
-public interface SplitResult <T extends SplitPointUnit> {
+public interface SplitResult <T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> {
 
 	/**
 	 * The head of the result.
@@ -20,5 +20,5 @@ public interface SplitResult <T extends SplitPointUnit> {
 	 * The tail of the result.
 	 * @return returns the tail
 	 */
-	public SplitPointDataSource<T> tail();
+	public SplitPointDataSource<T,U> tail();
 }

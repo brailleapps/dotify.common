@@ -12,7 +12,7 @@ import java.util.NoSuchElementException;
  *
  * @param <T> the type of split point units
  */
-public interface SplitPointDataSource<T extends SplitPointUnit> {
+public interface SplitPointDataSource<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> {
 
 	/**
 	 * Gets the split point data source supplements.
@@ -22,9 +22,9 @@ public interface SplitPointDataSource<T extends SplitPointUnit> {
 	
 	public boolean isEmpty();
 	
-	public Iterator<T> iterator();
+	public Iterator<T,U> iterator();
 	
-	public interface Iterator<T extends SplitPointUnit> {
+	public interface Iterator<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> {
 		
 		/**
 		 * Returns true if the data source has more items. Note that this  method
@@ -80,11 +80,9 @@ public interface SplitPointDataSource<T extends SplitPointUnit> {
 		/**
 		 * Returns a SplitPointDataSource from this iterator object.
 		 *
-		 * The result is guaranteed to be of the same type as the SplitPointDataSource
-		 * that supplied this iterator. The operation does not change the state of this
-		 * object.
+		 * The operation does not change the state of this object.
 		 */
-		public SplitPointDataSource<T> iterable();
+		public U iterable();
 
 	}
 }

@@ -43,7 +43,7 @@ public class SplitPointDataListTest {
 
 	@Test
 	public void testNoSuchElementException() {
-		SplitPointDataList.Iterator<SplitPointUnit> m
+		SplitPointDataList.Iterator<SplitPointUnit,SplitPointDataList<SplitPointUnit>> m
 		= new SplitPointDataList<>(mock(SplitPointUnit.class), mock(SplitPointUnit.class)).iterator();
 		assertTrue(m.hasNext());
 		m.next(0, false);

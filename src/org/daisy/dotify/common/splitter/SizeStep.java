@@ -4,7 +4,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-class SizeStep<T extends SplitPointUnit> implements StepForward<T> {
+class SizeStep<T extends SplitPointUnit,U extends SplitPointDataSource<T,U>> implements StepForward<T,U> {
 	private float size = 0;
 	private final Supplements<T> map;
 	private final Set<String> ids;
