@@ -1,9 +1,12 @@
 package org.daisy.dotify.common.collection;
 
-import java.util.Collection;
+import java.util.AbstractMap;
+import java.util.AbstractSet;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
@@ -11,27 +14,54 @@ import java.util.TreeMap;
 class PersistentMap<K,V> {
 
 	private Map<K,Map<Version,Optional<V>>> data = new HashMap<>(); // TreeMap
+	private Map<Version,Integer> size = new TreeMap<>();
 
-	/**
-	 * @see java.util.Map#get
-	 */
-	private V get(Version version, Object key) {
-		Map<Version,Optional<V>> changes = data.get(key);
+	private Optional<V> get(Map<Version,Optional<V>> changes, Version version) {
 		if (changes == null)
 			return null;
 		while (version != null) {
 			Optional<V> val = changes.get(version);
 			if (val != null)
-				return val.orElse(null);
+				return val;
 			version = version.parent;
 			// changes = changes.headMap(version, true); // would this actually speed things up?
 		}
 		return null;
 	}
 
-	// public int size(Version version);
+	/**
+	 * @see java.util.Map#get
+	 */
+	private V get(Version version, Object key) {
+		if (version == null)
+			return null;
+		Optional<V> val = get(data.get(key), version);
+		if (val != null)
+			return val.orElse(null);
+		return null;
+	}
 
-	// public Set<Entry<K,V>> entrySet(Version version);
+	/**
+	 * @see java.util.List#size
+	 */
+	private int size(Version version) {
+		while (version != null) {
+			Integer i = size.get(version);
+			if (i != null)
+				return i;
+			version = version.parent;
+		}
+		return 0;
+	}
+	
+	/**
+	 * @see java.util.Map#containsKey
+	 */
+	private boolean containsKey(Version version, Object key) {
+		if (version == null)
+			return false;
+		return get(data.get(key), version) != null;
+	}
 
 	// FIXME: only update if val != changes.get(version) ?
 	/**
@@ -43,12 +73,60 @@ class PersistentMap<K,V> {
 			changes = new TreeMap<>();
 			data.put(key, changes);
 		}
-		version = new Version(version);
-		changes.put(version, Optional.ofNullable(val));
-		return version;
+		Version newVersion = new Version(version);
+		if (changes.isEmpty()) {
+			size.put(newVersion, size(version) + 1);
+		}
+		changes.put(newVersion, Optional.ofNullable(val));
+		return newVersion;
 	}
 
-	// public Version remove(Version version, K key) { return put(version, key, null); }
+	/**
+	 * @see java.util.Map#entrySet
+	 */
+	private Set<Map.Entry<K,V>> entrySet(Version version) {
+		return new AbstractSet<Map.Entry<K,V>>() {
+			public Iterator<Map.Entry<K,V>> iterator() {
+				return new Iterator<Map.Entry<K,V>>() {
+					private Iterator<Map.Entry<K,Map<Version,Optional<V>>>> iterator = PersistentMap.this.data.entrySet().iterator();
+					private Optional<Map.Entry<K,V>> next = null;
+					private void computeNext() {
+						while (next == null) {
+							if (version == null) {
+								next = Optional.empty();
+							}
+							try {
+								Map.Entry<K,Map<Version,Optional<V>>> entry = iterator.next();
+								Optional<V> val = get(entry.getValue(), version);
+								if (val != null) {
+									next = Optional.of(new AbstractMap.SimpleImmutableEntry<>(entry.getKey(), val.orElse(null)));
+								}
+							} catch (NoSuchElementException e) {
+								next = Optional.empty();
+							}
+						}
+					}
+					public boolean hasNext() {
+						computeNext();
+						return next.isPresent();
+					}
+					public Entry<K,V> next() {
+						computeNext();
+						if (next.isPresent())
+							return next.get();
+						else
+							throw new NoSuchElementException();
+					}
+					public void remove() {
+						throw new UnsupportedOperationException();
+					}
+				};
+			}
+			public int size() {
+				return PersistentMap.this.size(version);
+			}
+		};
+	}
 
 	private int versions = 0;
 
@@ -70,7 +148,7 @@ class PersistentMap<K,V> {
 		}
 	}
 
-	static class View<K,V> { // must be static otherwise can not be extended by other classes
+	static class View<K,V> extends AbstractMap<K,V> { // must be static otherwise can not be extended by other classes
 
 		private final PersistentMap<K,V> map; // = PersistentMap.this;
 		private PersistentMap<K,V>.Version version;
@@ -91,45 +169,24 @@ class PersistentMap<K,V> {
 		// @Override
 		// protected void finalize() throws Throwable { ... }
 
-		/* ----------------- */
-		/* Read-only methods */
-		/* ----------------- */
-
+		@Override
 		public int size() {
-			throw new UnsupportedOperationException("Not implemented yet");
+			return map.size(version);
 		}
 
-		public boolean isEmpty() {
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
+		@Override
 		public boolean containsKey(Object key) {
-			throw new UnsupportedOperationException("Not implemented yet");
+			return map.containsKey(version, key);
 		}
 
-		public boolean containsValue(Object value) {
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
+		@Override
 		public V get(Object key) {
 			return map.get(version, key);
 		}
 
-		public Set<K> keySet() {
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
-		public Collection<V> values() {
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
 		public Set<Map.Entry<K,V>> entrySet() {
-			throw new UnsupportedOperationException("Not implemented yet");
+			return map.entrySet(version);
 		}
-
-		/* ---------------- */
-		/* Mutating methods */
-		/* ---------------- */
 
 		public V put(K key, V value) {
 			if (readonly)
@@ -139,68 +196,19 @@ class PersistentMap<K,V> {
 			version = map.put(version, key, value); // FIXME: how to combine get and put?
 			return prev;
 		}
-
+		
+		@Override
 		public V remove(Object key) {
 			if (readonly)
 				throw new UnsupportedOperationException("Read-only");
-			throw new UnsupportedOperationException("Not implemented yet");
+			throw new UnsupportedOperationException();
 		}
 
-		public void putAll(Map<? extends K,? extends V> m) {
-			if (readonly)
-				throw new UnsupportedOperationException("Read-only");
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
+		@Override
 		public void clear() {
 			if (readonly)
 				throw new UnsupportedOperationException("Read-only");
-			throw new UnsupportedOperationException("Not implemented yet");
-		}
-
-		/* ----------------------------------------- */
-	
-		// taken from AbstractMap
-
-		@Override
-		public int hashCode() {
-			int h = 0;
-			Iterator<Map.Entry<K,V>> i = entrySet().iterator();
-			while (i.hasNext())
-				h += i.next().hashCode();
-			return h;
-		}
-	
-		@Override
-		public boolean equals(Object o) {
-			if (o == this)
-				return true;
-			if (!(o instanceof Map))
-				return false;
-			@SuppressWarnings("unchecked")
-			Map<K,V> t = (Map<K,V>)o;
-			if (t.size() != size())
-				return false;
-			try {
-				Iterator<Map.Entry<K,V>> i = entrySet().iterator(); // FIXME: implement entrySet
-				while (i.hasNext()) {
-					Map.Entry<K,V> e = i.next();
-					K key = e.getKey();
-					V value = e.getValue();
-					if (value == null) {
-						if (!(t.get(key)==null && t.containsKey(key)))
-							return false;
-					} else {
-						if (!value.equals(t.get(key)))
-							return false;
-					}
-				}
-			} catch(ClassCastException unused) {
-				return false;
-			} catch(NullPointerException unused) {
-				return false;
-			}
-			return true;
+			throw new UnsupportedOperationException();
 		}
 	}
 }
